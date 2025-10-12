@@ -1,0 +1,92 @@
+<%- include('partials/_header') %>
+<%- include('partials/_nav', { user: user }) %>
+
+<main class="container">
+    <h1>Welcome, <%= user.name %>!</h1>
+
+    <div class="grid-container" style="grid-template-columns: 1fr 1fr; gap: 2rem;">
+        <div class="card">
+            <h2>Overall Attendance</h2>
+            <div class="percentage" style="font-size: 2.5rem; font-weight: bold; text-align: center; color: <%= overallPercentage >= 75 ? '#28a745' : '#dc3545' %>;">
+                <%= overallPercentage.toFixed(2) %>%
+            </div>
+            <div class="progress-bar" style="background: #e9ecef; border-radius: .25rem;">
+                <div class="progress-bar-inner" style="height: 10px; background-color: <%= overallPercentage >= 75 ? '#28a745' : '#dc3545' %>; border-radius: .25rem; width: <%= overallPercentage %>%;"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Your QR Code</h2>
+            <div id="qrCodeContainer" style="text-align: center; min-height: 150px; display: flex; align-items: center; justify-content: center;">
+                <button id="showQrBtn" class="btn btn-info">Show My QR Code</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" style="margin-top: 2rem;">
+        <h2>Subject-wise Breakdown</h2>
+        <canvas id="attendanceChart"></canvas>
+    </div>
+
+</main>
+
+<script>
+    // --- QR Code Script ---
+    document.getElementById('showQrBtn').addEventListener('click', async () => {
+        const container = document.getElementById('qrCodeContainer');
+        const button = document.getElementById('showQrBtn');
+        button.textContent = 'Loading...';
+        button.disabled = true;
+
+        try {
+            const response = await fetch('/student/qrcode');
+            const data = await response.json();
+            if (data.qrCodeUrl) {
+                container.innerHTML = `<img src="${data.qrCodeUrl}" alt="Your QR Code" style="max-width: 150px;">`;
+            } else {
+                container.innerHTML = '<p style="color: red;">Could not load QR code.</p>';
+            }
+        } catch (error) {
+            container.innerHTML = '<p style="color: red;">Could not load QR code.</p>';
+        }
+    });
+
+    // --- Chart.js Script ---
+    document.addEventListener('DOMContentLoaded', () => {
+        const ctx = document.getElementById('attendanceChart').getContext('2d');
+        const attendanceChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: <%- chartLabels %>,
+                datasets: [{
+                    label: 'Attendance %',
+                    data: <%- chartData %>,
+                    backgroundColor: <%- chartColors %>,
+                    borderColor: <%- chartColors %>.map(color => color.replace('0.7', '1')),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%'
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    });
+</script>
+
+</body>
+</html>

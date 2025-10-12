@@ -1,0 +1,50 @@
+<%- include('partials/_header') %>
+<%- include('partials/_nav', { user: user }) %>
+<style>
+    .sheet-container { background-color: #fff; padding: 2rem; border-radius: 8px; }
+    .student-row { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; border-bottom: 1px solid #eee; }
+    .student-row:last-child { border-bottom: none; }
+    .btn-group label { margin-right: 10px; }
+</style>
+
+<main class="container">
+    <div class="sheet-container">
+        <h2>Attendance for <%= selectedClass.name %></h2>
+        <p><strong>Date:</strong> <%= new Date(date).toLocaleDateString() %> | <strong>Subject:</strong> <%= subject %></p>
+        
+        <form action="/teacher/attendance/submit" method="POST">
+            <input type="hidden" name="classId" value="<%= selectedClass._id %>">
+            <input type="hidden" name="date" value="<%= date %>">
+            <input type="hidden" name="subject" value="<%= subject %>">
+
+            <div style="margin-bottom: 1rem;">
+                <button type="button" onclick="markAll('Present')" class="btn btn-success">Mark All Present</button>
+                <button type="button" onclick="markAll('Absent')" class="btn btn-warning">Mark All Absent</button>
+            </div>
+
+            <% students.forEach(student => { %>
+                <div class="student-row">
+                    <span><%= student.name %> (<%= student.schoolId %>)</span>
+                    <div class="attendance-toggle">
+    <% const record = records.find(r => r.student.equals(student._id)); %>
+    <input type="radio" id="present_<%= student._id %>" name="attendance[<%= student._id %>]" value="Present" <%= (record && record.status === 'Present') || !record ? 'checked' : '' %>>
+    <label for="present_<%= student._id %>">Present</label>
+
+    <input type="radio" id="absent_<%= student._id %>" name="attendance[<%= student._id %>]" value="Absent" <%= record && record.status === 'Absent' ? 'checked' : '' %>>
+    <label for="absent_<%= student._id %>">Absent</label>
+</div>
+                </div>
+            <% }); %>
+
+            <button type="submit" class="btn btn-primary" style="margin-top: 1.5rem;">Submit Attendance</button>
+        </form>
+    </div>
+</main>
+<script>
+    function markAll(status) {
+        const radios = document.querySelectorAll(`input[type="radio"][value="${status}"]`);
+        radios.forEach(radio => radio.checked = true);
+    }
+</script>
+</body>
+</html>

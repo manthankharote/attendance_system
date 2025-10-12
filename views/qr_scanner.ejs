@@ -1,0 +1,133 @@
+<%- include('partials/_header') %>
+<%- include('partials/_nav', { user: user }) %>
+
+<style>
+    #video-container {
+        position: relative;
+        width: 100%;
+        max-width: 500px;
+        margin: 20px auto;
+        border: 2px solid #eee;
+        background-color: #000;
+    }
+    #video {
+        width: 100%;
+        height: auto;
+        display: block;
+    }
+    #scanned-list li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.8rem;
+    }
+</style>
+
+<main class="container">
+    <div class="card">
+        <h2>QR Code Scanner</h2>
+        <p><strong>Class:</strong> <%= selectedClass.name %> | <strong>Date:</strong> <%= new Date(date).toLocaleDateString() %> | <strong>Subject:</strong> <%= subject %></p>
+        
+        <h3 id="scan-count" style="text-align: center; font-size: 1.5rem;">Scanned: 0 / <%= selectedClass.students.length %></h3>
+
+        <div id="video-container">
+            <video id="video" playsinline></video>
+        </div>
+        <p id="status-message" style="text-align: center;">Starting camera...</p>
+        
+        <form id="qrForm" action="/teacher/attendance/qr-submit" method="POST">
+            <input type="hidden" name="classId" value="<%= selectedClass._id %>">
+            <input type="hidden" name="date" value="<%= date %>">
+            <input type="hidden" name="subject" value="<%= subject %>">
+            <input type="hidden" name="session" value="<%= session %>">
+            
+            <h3>Scanned Students</h3>
+            <ul id="scanned-list"></ul>
+            
+            <div id="present-students-container"></div>
+            
+            <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">Submit Attendance</button>
+        </form>
+    </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const video = document.getElementById('video');
+        const canvasElement = document.createElement('canvas');
+        const canvas = canvasElement.getContext('2d', { willReadFrequently: true });
+        const statusMessage = document.getElementById('status-message');
+        const listElement = document.getElementById('scanned-list');
+        const formContainer = document.getElementById('present-students-container');
+        const successSound = new Audio('/sounds/scan-success.mp3');
+        const countElement = document.getElementById('scan-count');
+        const students = <%- JSON.stringify(selectedClass.students) %>;
+        const totalStudents = students.length;
+        const studentMap = new Map(students.map(student => [student.schoolId, student]));
+        const scannedIds = new Set();
+
+        function updateCount() {
+            countElement.textContent = `Scanned: ${scannedIds.size} / ${totalStudents}`;
+        }
+
+        function handleScan(decodedText) {
+            const student = studentMap.get(decodedText);
+            if (student && !scannedIds.has(student._id)) {
+                successSound.currentTime = 0;
+                successSound.play();
+                scannedIds.add(student._id);
+                updateCount();
+                statusMessage.textContent = `Scanned: ${student.name}`;
+                const listItem = document.createElement('li');
+                listItem.innerHTML = `<span>${student.name} (${student.schoolId})</span><button type="button" class="btn btn-danger btn-sm remove-btn" data-id="${student._id}">Remove</button>`;
+                listElement.appendChild(listItem);
+                const hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = 'presentStudents';
+                hiddenInput.value = student._id;
+                formContainer.appendChild(hiddenInput);
+            }
+        }
+
+        listElement.addEventListener('click', function(e) {
+            if (e.target && e.target.classList.contains('remove-btn')) {
+                const studentId = e.target.getAttribute('data-id');
+                e.target.parentElement.remove();
+                const inputToRemove = formContainer.querySelector(`input[value="${studentId}"]`);
+                if (inputToRemove) inputToRemove.remove();
+                scannedIds.delete(studentId);
+                updateCount();
+            }
+        });
+
+        function tick() {
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                canvasElement.height = video.videoHeight;
+                canvasElement.width = video.videoWidth;
+                canvas.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
+                const imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height);
+                if (code) handleScan(code.data);
+            }
+            requestAnimationFrame(tick);
+        }
+
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+            .then(function(stream) {
+                video.srcObject = stream;
+                video.play();
+                statusMessage.textContent = 'Point camera at a QR code';
+                requestAnimationFrame(tick);
+            })
+            .catch(function(err) {
+                console.error("Camera Error:", err);
+                statusMessage.textContent = "Error: Could not access camera.";
+            });
+    });
+</script>
+</body>
+</html>

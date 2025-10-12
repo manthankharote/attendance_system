@@ -1,0 +1,27 @@
+<nav class="navbar">
+    <a href="/" class="brand">Attendance Pro</a>
+    
+    <div class="nav-links">
+        <% if (user.role === 'admin') { %>
+            <a href="/admin/dashboard">Dashboard</a>
+            <a href="/admin/users">Users</a>
+            <a href="/admin/classes">Classes</a>
+            <a href="/admin/sessions">Sessions</a> <a href="/admin/reports">Reports</a>
+            <a href="/admin/settings">Settings</a>
+        <% } else if (user.role === 'teacher') { %>
+            <a href="/teacher/dashboard">Dashboard</a>
+            <a href="/teacher/attendance">Attendance</a>
+            <a href="/teacher/reports">Reports</a>
+            <a href="/teacher/low-attendance">Low Attendance</a>
+        <% } else { %>
+            <a href="/student/dashboard">Dashboard</a>
+            <a href="/student/profile">My Profile</a>
+            <a href="#">My Reports</a>
+        <% } %>
+    </div>
+
+    <div class="nav-right">
+        <span>Welcome, <%= user.name %></span>
+        <a href="/auth/logout" class="btn btn-logout">Logout</a>
+    </div>
+</nav>

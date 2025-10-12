@@ -1,0 +1,45 @@
+<%- include('partials/_header') %>
+<%- include('partials/_nav', { user: user }) %>
+
+<main class="container">
+    <div class="grid-container" style="grid-template-columns: 2fr 1fr; gap: 2rem;">
+        <div class="card">
+            <h2>Existing Sessions</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Session Name / Time Slot</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% sessions.forEach(session => { %>
+                            <tr>
+                                <td><%= session.name %></td>
+                                <td>
+                                    <form action="/admin/sessions/delete/<%= session._id %>" method="POST" onsubmit="return confirm('Are you sure?');">
+                                        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Add New Session</h2>
+            <form action="/admin/sessions/add" method="POST">
+                <div class="form-group">
+                    <label for="name">Session Name</label>
+                    <input type="text" id="name" name="name" class="form-control" placeholder="e.g., 09:00 - 10:00" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Add Session</button>
+            </form>
+        </div>
+    </div>
+</main>
+</body>
+</html>

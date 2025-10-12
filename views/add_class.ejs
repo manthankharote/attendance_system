@@ -1,0 +1,55 @@
+<%- include('partials/_header') %>
+<%- include('partials/_nav', { user: user }) %>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+    .form-container { background: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); max-width: 800px; margin: auto; }
+    .form-group { margin-bottom: 1rem; }
+    select[multiple] { height: 200px; }
+</style>
+
+<main class="container">
+    <div class="form-container">
+        <h1>Add New Class</h1>
+        <form action="/admin/classes/add" method="POST">
+            <div class="form-group">
+                <label for="name">Class Name (e.g., Grade 10 - Section A)</label>
+                <input type="text" id="name" name="name" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="teacher">Assign Teacher</label>
+                <select id="teacher" name="teacher" class="form-control" required>
+                    <% teachers.forEach(t => { %>
+                        <option value="<%= t._id %>"><%= t.name %> (<%= t.schoolId %>)</option>
+                    <% }); %>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="subjects">Subjects (comma-separated)</label>
+                <input type="text" id="subjects" name="subjects" class="form-control" placeholder="e.g. Math, Science, History" required>
+            </div>
+            <div class="form-group">
+                <label for="students">Assign Students</label>
+                <select id="students" name="students" class="form-control" multiple required>
+                    <% students.forEach(s => { %>
+                        <option value="<%= s._id %>"><%= s.name %> (<%= s.schoolId %>)</option>
+                    <% }); %>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-success">Create Class</button>
+        </form>
+    </div>
+</main>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+    $(document).ready(function() {
+        $('#students').select2({
+            placeholder: "Select students",
+            allowClear: true
+        });
+        $('#teacher').select2();
+    });
+</script>
+</body>
+</html>

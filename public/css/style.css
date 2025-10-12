@@ -1,0 +1,258 @@
+/* --- Universal Settings & Variables --- */
+:root {
+    --primary-color: #007bff;
+    --secondary-color: #6c757d;
+    --success-color: #28a745;
+    --danger-color: #dc3545;
+    --warning-color: #ffc107;
+    --light-color: #f8f9fa;
+    --dark-color: #343a40;
+    --font-family: 'Poppins', sans-serif;
+    --border-radius: 8px;
+    --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+body {
+    font-family: var(--font-family);
+    margin: 0;
+    background-color: #f4f7f6;
+    color: var(--dark-color);
+    line-height: 1.6;
+}
+
+/* --- Layout --- */
+.container {
+    padding: 1rem 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* --- Navigation Bar --- */
+.navbar {
+    background-color: #fff;
+    padding: 1rem 2rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.navbar .brand {
+    font-weight: 700;
+    font-size: 1.5rem;
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.nav-links a {
+    text-decoration: none;
+    color: var(--secondary-color);
+    margin: 0 1rem;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.nav-links a:hover {
+    color: var(--primary-color);
+}
+
+.nav-right {
+    display: flex;
+    align-items: center;
+}
+
+.nav-right span {
+    margin-right: 1.5rem;
+    font-weight: 500;
+}
+
+/* --- General Styling --- */
+h1, h2, h3 {
+    color: var(--dark-color);
+    font-weight: 600;
+}
+
+.card {
+    background: #fff;
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    margin-top: 2rem;
+}
+
+/* --- Buttons --- */
+.btn {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--border-radius);
+    text-decoration: none;
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-family: var(--font-family);
+    font-weight: 500;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+.btn-primary { background-color: var(--primary-color); }
+.btn-success { background-color: var(--success-color); }
+.btn-danger { background-color: var(--danger-color); }
+.btn-warning { background-color: var(--warning-color); color: #212529; }
+.btn-info { background-color: #17a2b8; }
+.btn-logout { background-color: var(--danger-color); }
+
+/* --- Forms --- */
+.form-container {
+    background: #fff;
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    max-width: 600px;
+    margin: 2rem auto;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.form-group input, .form-group select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-sizing: border-box;
+    font-family: var(--font-family);
+}
+
+/* --- Tables --- */
+.table-container {
+    overflow-x: auto; /* For responsiveness */
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1.5rem;
+}
+th, td {
+    padding: 1rem;
+    border-bottom: 1px solid #ddd;
+    text-align: left;
+    vertical-align: middle;
+}
+th {
+    background-color: var(--light-color);
+    font-weight: 600;
+}
+tr:hover {
+    background-color: #f1f1f1;
+}
+
+/* --- Responsiveness --- */
+@media (max-width: 768px) {
+    .container {
+        padding: 1rem;
+    }
+    .navbar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .nav-links {
+        margin-top: 1rem;
+        display: flex;
+        flex-direction: column;
+    }
+    .nav-links a {
+        margin: 0.5rem 0;
+    }
+    .nav-right {
+        margin-top: 1rem;
+        width: 100%;
+        justify-content: space-between;
+    }
+}
+/* --- New Styles for Search and Pagination --- */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.search-container {
+    margin-bottom: 2rem;
+}
+.search-container form {
+    display: flex;
+    gap: 10px;
+}
+.search-container input {
+    flex-grow: 1;
+    padding: 0.75rem;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 1rem;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 10px;
+}
+.action-buttons form {
+    margin: 0;
+}
+
+.pagination {
+    margin-top: 2rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+}
+.btn-secondary {
+    background-color: #fff;
+    color: var(--primary-color);
+    border: 1px solid var(--primary-color);
+}
+/* --- Attendance Toggle Buttons --- */
+.attendance-toggle {
+    display: flex;
+    border: 1px solid #ccc;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+}
+.attendance-toggle input[type="radio"] {
+    display: none; /* Hide the actual radio button */
+}
+.attendance-toggle label {
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    background-color: #f8f9fa;
+    color: var(--secondary-color);
+    transition: all 0.3s ease;
+    flex-grow: 1;
+    text-align: center;
+}
+.attendance-toggle input[type="radio"]:checked + label {
+    background-color: var(--success-color);
+    color: white;
+    font-weight: 600;
+}
+.attendance-toggle input[id*="absent_"]:checked + label {
+    background-color: var(--danger-color);
+}

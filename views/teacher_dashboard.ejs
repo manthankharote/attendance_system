@@ -1,0 +1,27 @@
+<%- include('partials/_header') %>
+<%- include('partials/_nav', { user: user }) %>
+
+<main class="container">
+    <h1>Teacher Dashboard</h1>
+    <p>Welcome, <%= user.name %>. Here are the classes you are assigned to.</p>
+
+    <% if (classes.length > 0) { %>
+        <div class="grid-container" style="margin-top: 2rem;">
+            <% classes.forEach(c => { %>
+                <div class="card">
+                    <h2><%= c.name %></h2>
+                    <p><strong>Subjects:</strong> <%= c.subjects.join(', ') %></p>
+                    <p><strong>Students Enrolled:</strong> <%= c.students.length %></p>
+                    <a href="/teacher/attendance" class="btn btn-primary" style="margin-top: 1rem;">Take Attendance</a>
+                </div>
+            <% }); %>
+        </div>
+    <% } else { %>
+        <div class="card">
+            <p>You are not currently assigned to any classes. Please contact an administrator.</p>
+        </div>
+    <% } %>
+</main>
+
+</body>
+</html>

@@ -1,0 +1,46 @@
+<%- include('partials/_header') %>
+<%- include('partials/_nav', { user: user }) %>
+
+<main class="container">
+    <div class="page-header">
+        <h1>Low Attendance Students</h1>
+    </div>
+
+    <div class="card">
+        <h2>Students Below <%= threshold %>% Attendance</h2>
+        <p>This report shows all students in your classes whose overall attendance has fallen below the threshold.</p>
+        
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Student Name</th>
+                        <th>School ID</th>
+                        <th>Attendance %</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% lowAttendanceStudents.forEach(student => { %>
+                        <tr>
+                            <td><%= student.name %></td>
+                            <td><%= student.schoolId %></td>
+                            <td style="color: var(--danger-color); font-weight: bold;"><%= student.percentage.toFixed(2) %>%</td>
+                            <td>
+                                <button class="btn btn-info btn-sm">Notify</button>
+                            </td>
+                        </tr>
+                    <% }); %>
+                    <% if (lowAttendanceStudents.length === 0) { %>
+                        <tr>
+                            <td colspan="4" style="text-align: center;">No students in your classes have low attendance.</td>
+                        </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+
+</body>
+</html>
