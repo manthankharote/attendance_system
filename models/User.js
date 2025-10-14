@@ -29,6 +29,7 @@ const userSchema = new mongoose.Schema({
         type: String,
         enum: ['student', 'teacher', 'admin'],
         default: 'student',
+        index: true,
         passwordResetToken: String,
     passwordResetExpires: Date
     }

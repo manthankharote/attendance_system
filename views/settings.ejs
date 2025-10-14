@@ -1,0 +1,20 @@
+<%- include('partials/_header') %>
+<%- include('partials/_nav', { user: user }) %>
+
+<main class="container">
+    <h1>System Settings</h1>
+
+    <div class="card">
+        <h2>Attendance Settings</h2>
+        <form action="/admin/settings" method="POST">
+            <div class="form-group">
+                <label for="lowAttendanceThreshold">Low Attendance Threshold (%)</label>
+                <input type="number" id="lowAttendanceThreshold" name="lowAttendanceThreshold" class="form-control" value="<%= settings.lowAttendanceThreshold %>" min="0" max="100" required>
+                <small>Students with attendance below this percentage will be flagged.</small>
+            </div>
+            <button type="submit" class="btn btn-primary">Save Settings</button>
+        </form>
+    </div>
+</main>
+</body>
+</html>

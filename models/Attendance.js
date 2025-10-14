@@ -5,7 +5,8 @@ const attendanceRecordSchema = new Schema({
     student: {
         type: Schema.Types.ObjectId,
         ref: 'User',
-        required: true
+        required: true,
+        index: true
     },
     status: {
         type: String,
@@ -22,7 +23,8 @@ const attendanceSchema = new Schema({
     },
     date: {
         type: Date,
-        required: true
+        required: true,
+        index: true
     },
     subject: {
         type: String,
