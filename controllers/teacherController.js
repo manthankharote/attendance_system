@@ -2,37 +2,28 @@ const mongoose = require('mongoose');
 const User = require('../models/User');
 const Class = require('../models/Class');
 const Attendance = require('../models/Attendance');
+const Setting = require('../models/Setting');
 const Session = require('../models/Session');
+const qrcode = require('qrcode');
+const crypto = require('crypto');
 
-// @desc    Show the teacher dashboard with assigned classes
-// @route   GET /teacher/dashboard
+// @desc    Show the teacher dashboard
 exports.getTeacherDashboard = async (req, res) => {
     try {
-        const classes = await Class.find({ teacher: req.user._id })
-            .populate('students')
-            .sort({ name: 1 });
-
-        res.render('teacher_dashboard', {
-            title: 'Teacher Dashboard',
-            user: req.user,
-            classes: classes
-        });
+        const classes = await Class.find({ teacher: req.user._id }).populate('students').sort({ name: 1 });
+        res.render('teacher_dashboard', { title: 'Teacher Dashboard', user: req.user, classes: classes });
     } catch (err) {
         console.error(err);
         res.status(500).send('Server Error');
     }
 };
 
-// @desc    Show page to select class and date for attendance
-// @route   GET /teacher/attendance
+// @desc    Show page to select class/date for attendance
 exports.getAttendancePage = async (req, res) => {
     try {
         const classes = await Class.find({ teacher: req.user._id });
-        res.render('take_attendance', {
-            title: 'Take Attendance',
-            user: req.user,
-            classes
-        });
+        const sessions = await Session.find().sort({ name: 1 });
+        res.render('take_attendance', { title: 'Take Attendance', user: req.user, classes, sessions });
     } catch (err) {
         console.error(err);
         res.status(500).send('Server Error');
@@ -40,23 +31,15 @@ exports.getAttendancePage = async (req, res) => {
 };
 
 // @desc    Get the list of students for attendance (Manual)
-// @route   POST /teacher/attendance/sheet
 exports.getAttendanceSheet = async (req, res) => {
     try {
         const { classId, date, subject, session } = req.body;
         const selectedClass = await Class.findById(classId).populate('students');
         if (!selectedClass) return res.status(404).send('Class not found');
-        
         const attendanceRecord = await Attendance.findOne({ class: classId, date, subject, session });
-        
         res.render('attendance_sheet', {
-            title: 'Attendance Sheet',
-            user: req.user,
-            selectedClass,
-            students: selectedClass.students,
-            date,
-            subject,
-            session,
+            title: 'Attendance Sheet', user: req.user, selectedClass,
+            students: selectedClass.students, date, subject, session,
             records: attendanceRecord ? attendanceRecord.records : []
         });
     } catch (err) {
@@ -66,14 +49,10 @@ exports.getAttendanceSheet = async (req, res) => {
 };
 
 // @desc    Submit the manual attendance
-// @route   POST /teacher/attendance/submit
 exports.submitAttendance = async (req, res) => {
     const { classId, date, subject, session, attendance } = req.body;
     try {
-        const records = Object.keys(attendance).map(studentId => ({
-            student: studentId,
-            status: attendance[studentId]
-        }));
+        const records = Object.keys(attendance).map(studentId => ({ student: studentId, status: attendance[studentId] }));
         await Attendance.findOneAndUpdate(
             { class: classId, date, subject, session },
             { $set: { records: records } },
@@ -86,21 +65,14 @@ exports.submitAttendance = async (req, res) => {
     }
 };
 
-// @desc    Show the QR Code scanner page
-// @route   POST /teacher/attendance/qr-scanner
+// @desc    Show the QR Code scanner page (Student Scan Mode)
 exports.getQrScannerPage = async (req, res) => {
     try {
         const { classId, date, subject, session } = req.body;
         const selectedClass = await Class.findById(classId).populate('students', 'name schoolId');
         if (!selectedClass) return res.status(404).send('Class not found');
-        
         res.render('qr_scanner', {
-            title: 'QR Code Scanner',
-            user: req.user,
-            selectedClass,
-            date,
-            subject,
-            session
+            title: 'QR Code Scanner', user: req.user, selectedClass, date, subject, session
         });
     } catch (err) {
         console.error(err);
@@ -109,19 +81,16 @@ exports.getQrScannerPage = async (req, res) => {
 };
 
 // @desc    Submit attendance from the QR scanner
-// @route   POST /teacher/attendance/qr-submit
 exports.submitQrAttendance = async (req, res) => {
     const { classId, date, subject, session, presentStudents } = req.body;
     try {
         const fullClass = await Class.findById(classId).select('students');
         if (!fullClass) return res.status(404).send('Class not found');
-        
         const presentStudentIds = Array.isArray(presentStudents) ? presentStudents : [presentStudents].filter(Boolean);
         const records = fullClass.students.map(studentId => ({
             student: studentId,
             status: presentStudentIds.includes(studentId.toString()) ? 'Present' : 'Absent'
         }));
-        
         await Attendance.findOneAndUpdate(
             { class: classId, date, subject, session },
             { $set: { records: records } },
@@ -134,80 +103,65 @@ exports.submitQrAttendance = async (req, res) => {
     }
 };
 
-// @desc    Show the teacher's reports page
-// @route   GET /teacher/reports
-// controllers/teacherController.js (Replace the function with this)
+// @desc    Generate a unique QR code for a specific session (Teacher Display Mode)
+exports.generateSessionQr = async (req, res) => {
+    try {
+        const { classId, date, subject, session } = req.body;
+        const uniqueSessionToken = crypto.randomBytes(8).toString('hex');
+        const sessionIdentifier = `${classId}_${date}_${subject}_${session}_${uniqueSessionToken}`;
+        const qrCodeDataURL = await qrcode.toDataURL(sessionIdentifier);
+        const selectedClass = await Class.findById(classId).select('name');
 
-// @desc    Show the teacher's reports page (SECURE VERSION)
-// @route   GET /teacher/reports
+        res.render('display_session_qr', {
+            title: 'Session QR Code',
+            user: req.user,
+            qrCodeUrl: qrCodeDataURL,
+            classId, date, subject, session,
+            sessionIdentifier,
+            selectedClass
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Server Error');
+    }
+};
+
+// @desc    Show the teacher's reports page
 exports.getTeacherReportsPage = async (req, res) => {
     try {
         const { classId, studentId, startDate, endDate } = req.query;
-
-        // --- 1. Security Filter: Get an array of class IDs taught by this teacher ---
         const teacherClasses = await Class.find({ teacher: req.user._id }).select('_id students');
         const teacherClassIds = teacherClasses.map(c => c._id);
-
-        // If the teacher has no classes, there's nothing to show.
+        
         if (teacherClassIds.length === 0) {
             return res.render('teacher_reports', {
-                title: 'My Reports',
-                user: req.user,
-                records: [],
-                students: [],
-                classes: [],
-                filters: req.query
+                title: 'My Reports', user: req.user, records: [],
+                students: [], classes: [], filters: req.query
             });
         }
-
-        // --- 2. Build a reliable match object for our query ---
-        const match = {
-            // The most important line: only search for attendance within the teacher's classes.
-            class: { $in: teacherClassIds } 
-        };
-
-        // Add user's filters to the same match object
-        if (classId) {
-            match.class = new mongoose.Types.ObjectId(classId);
-        }
-        if (startDate && endDate) {
-            match.date = { $gte: new Date(startDate), $lte: new Date(endDate) };
-        }
-
-        // --- 3. Build the Aggregation Pipeline ---
-        const pipeline = [
-            { $match: match }, // Apply all class and date filters first
-            { $unwind: '$records' }
-        ];
-
-        // If a specific student is filtered, add a second match stage.
-        if (studentId) {
-            pipeline.push({ $match: { 'records.student': new mongoose.Types.ObjectId(studentId) } });
-        }
         
-        // --- 4. Join with other collections to get names ---
+        const match = { class: { $in: teacherClassIds } };
+        if (classId) match.class = new mongoose.Types.ObjectId(classId);
+        if (startDate && endDate) match.date = { $gte: new Date(startDate), $lte: new Date(endDate) };
+        
+        const pipeline = [{ $match: match }, { $unwind: '$records' }];
+        if (studentId) { pipeline.push({ $match: { 'records.student': new mongoose.Types.ObjectId(studentId) } }); }
+        
         pipeline.push(
             { $lookup: { from: 'users', localField: 'records.student', foreignField: '_id', as: 'studentDetails' } },
             { $lookup: { from: 'classes', localField: 'class', foreignField: '_id', as: 'classDetails' } },
-            { $unwind: '$studentDetails' },
-            { $unwind: '$classDetails' },
+            { $unwind: '$studentDetails' }, { $unwind: '$classDetails' },
             { $sort: { date: -1, 'studentDetails.name': 1 } }
         );
-
+        
         const records = await Attendance.aggregate(pipeline);
-
-        // --- 5. Prepare data for the filter dropdowns ---
         const teacherStudentIds = teacherClasses.flatMap(c => c.students);
         const teacherStudents = await User.find({ _id: { $in: teacherStudentIds } }).sort({ name: 1 });
         const teacherClassesForFilter = await Class.find({ _id: { $in: teacherClassIds } }).sort({ name: 1 });
-
+        
         res.render('teacher_reports', {
-            title: 'My Reports',
-            user: req.user,
-            records,
-            students: teacherStudents,
-            classes: teacherClassesForFilter,
-            filters: req.query
+            title: 'My Reports', user: req.user, records,
+            students: teacherStudents, classes: teacherClassesForFilter, filters: req.query
         });
     } catch (err) {
         console.error(err);
@@ -215,75 +169,107 @@ exports.getTeacherReportsPage = async (req, res) => {
     }
 };
 
-
-// @desc    Show low attendance report for the teacher's students
-// @route   GET /teacher/low-attendance
+// @desc    Show low attendance report
 exports.getLowAttendancePage = async (req, res) => {
     try {
-        // --- 1. Security: Get an array of student IDs taught by this teacher ---
         const teacherClasses = await Class.find({ teacher: req.user._id }).select('students');
         const teacherStudentIds = teacherClasses.flatMap(c => c.students);
-
-        // --- 2. Aggregation Pipeline to calculate percentages ---
-        const lowAttendanceThreshold = 75;
+        const lowAttendanceThreshold = parseInt(res.locals.settings.lowAttendanceThreshold) || 75;
+        
         const studentAttendanceStats = await Attendance.aggregate([
-            // Start by only looking at records for this teacher's students
             { $unwind: '$records' },
             { $match: { 'records.student': { $in: teacherStudentIds } } },
-            {
-                $group: {
-                    _id: '$records.student',
-                    totalClasses: { $sum: 1 },
-                    presentClasses: {
-                        $sum: { $cond: [{ $eq: ['$records.status', 'Present'] }, 1, 0] }
-                    }
-                }
-            },
-            {
-                $lookup: {
-                    from: 'users',
-                    localField: '_id',
-                    foreignField: '_id',
-                    as: 'studentDetails'
-                }
-            },
+            { $group: { _id: '$records.student', totalClasses: { $sum: 1 }, presentClasses: { $sum: { $cond: [{ $eq: ['$records.status', 'Present'] }, 1, 0] } } } },
+            { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'studentDetails' } },
             { $unwind: '$studentDetails' },
-            {
-                $project: {
-                    name: '$studentDetails.name',
-                    schoolId: '$studentDetails.schoolId',
-                    percentage: {
-                        $multiply: [{ $divide: ['$presentClasses', '$totalClasses'] }, 100]
-                    }
-                }
-            },
+            { $project: { name: '$studentDetails.name', schoolId: '$studentDetails.schoolId', percentage: { $multiply: [{ $divide: ['$presentClasses', '$totalClasses'] }, 100] } } },
             { $match: { percentage: { $lt: lowAttendanceThreshold } } },
             { $sort: { percentage: 1 } }
         ]);
-
+        
         res.render('teacher_low_attendance', {
-            title: 'Low Attendance Students',
-            user: req.user,
-            lowAttendanceStudents: studentAttendanceStats,
-            threshold: lowAttendanceThreshold
+            title: 'Low Attendance Students', user: req.user,
+            lowAttendanceStudents: studentAttendanceStats, threshold: lowAttendanceThreshold
         });
-
     } catch (err) {
         console.error(err);
         res.status(500).send('Server Error');
     }
 };
-exports.getAttendancePage = async (req, res) => {
-    try {
-        const classes = await Class.find({ teacher: req.user._id });
-        const sessions = await Session.find().sort({ name: 1 }); // Fetch sessions from DB
 
-        res.render('take_attendance', {
-            title: 'Take Attendance',
-            user: req.user,
-            classes,
-            sessions // Pass sessions to the view
+// @desc    Show the page to edit a specific student's attendance
+exports.getEditAttendancePage = async (req, res) => {
+    try {
+        const { attendanceId, recordId } = req.params;
+        const attendance = await Attendance.findById(attendanceId).populate({ path: 'records.student', select: 'name schoolId' });
+        const recordToEdit = attendance.records.find(r => r._id.equals(recordId));
+        const isEditable = (Date.now() - new Date(attendance.updatedAt).getTime()) < 24 * 60 * 60 * 1000;
+        
+        if (!isEditable) {
+            return res.status(403).send('This record is older than 24 hours and can no longer be edited.');
+        }
+        
+        res.render('edit_attendance', { title: 'Edit Attendance', user: req.user, attendance, recordToEdit });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Server Error');
+    }
+};
+
+// @desc    Update a specific student's attendance record
+exports.updateAttendance = async (req, res) => {
+    try {
+        const { attendanceId, recordId } = req.params;
+        const { status } = req.body;
+        const attendance = await Attendance.findById(attendanceId);
+        const isEditable = (Date.now() - new Date(attendance.updatedAt).getTime()) < 24 * 60 * 60 * 1000;
+        
+        if (!isEditable) {
+            return res.status(403).send('This record is older than 24 hours and can no longer be edited.');
+        }
+        
+        const recordIndex = attendance.records.findIndex(r => r._id.equals(recordId));
+        if (recordIndex > -1) {
+            attendance.records[recordIndex].status = status;
+            await attendance.save();
+        }
+        
+        res.redirect('/teacher/reports');
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Server Error');
+    }
+};
+// @desc    Submit attendance from the session QR (Teacher Display Mode)
+// @route   POST /teacher/attendance/submit-session
+exports.submitSessionAttendance = async (req, res) => {
+    try {
+        const { classId, date, subject, session, presentStudents } = req.body;
+
+        // Get all students in the class
+        const fullClass = await Class.findById(classId).select('students');
+        if (!fullClass) {
+            return res.status(404).send('Class not found');
+        }
+
+        // Standardize the presentStudents array (in case only one student is scanned)
+        const presentStudentIds = Array.isArray(presentStudents) ? presentStudents : [presentStudents].filter(Boolean);
+
+        // Create the full attendance record
+        // Mark scanned students as 'Present', all others as 'Absent'
+        const records = fullClass.students.map(studentId => {
+            const status = presentStudentIds.includes(studentId.toString()) ? 'Present' : 'Absent';
+            return { student: studentId, status: status };
         });
+
+        // Use findOneAndUpdate to create or update the record
+        await Attendance.findOneAndUpdate(
+            { class: classId, date, subject, session },
+            { $set: { records: records } },
+            { new: true, upsert: true, setDefaultsOnInsert: true }
+        );
+        
+        res.redirect('/teacher/dashboard');
     } catch (err) {
         console.error(err);
         res.status(500).send('Server Error');

@@ -147,3 +147,11 @@ exports.getQrCode = async (req, res) => {
         res.status(500).json({ error: 'Failed to generate QR code' });
     }
 };
+// @desc    Show the student's scanning page
+// @route   GET /student/scan
+exports.getScanPage = (req, res) => {
+    res.render('student_scan', {
+        title: 'Scan Session QR',
+        user: req.user // Pass the logged-in user's info
+    });
+};

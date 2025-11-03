@@ -8,7 +8,11 @@ const {
     getQrScannerPage,
     submitQrAttendance,
     getTeacherReportsPage,
-    getLowAttendancePage
+    getLowAttendancePage,
+    getEditAttendancePage,
+    updateAttendance,
+    generateSessionQr,
+    submitSessionAttendance
 } = require('../controllers/teacherController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
@@ -24,9 +28,17 @@ router.post('/attendance/sheet', getAttendanceSheet);
 router.post('/attendance/submit', submitAttendance);
 router.post('/attendance/qr-scanner', getQrScannerPage);
 router.post('/attendance/qr-submit', submitQrAttendance);
+router.post('/attendance/generate-qr', generateSessionQr);
+
+// Reports Routes
+router.get('/reports', getTeacherReportsPage);
 router.get('/low-attendance', getLowAttendancePage);
 
-// Reports Route
-router.get('/reports', getTeacherReportsPage); // Make sure this route exists
+// Edit Attendance Routes
+router.get('/attendance/edit/:attendanceId/:recordId', getEditAttendancePage);
+router.post('/attendance/edit/:attendanceId/:recordId', updateAttendance);
+router.post('/attendance/submit-session', submitSessionAttendance);
+
+
 
 module.exports = router;

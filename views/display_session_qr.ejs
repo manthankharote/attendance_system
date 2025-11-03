@@ -1,0 +1,71 @@
+<%- include('partials/_header') %>
+<%- include('partials/_nav', { user: user }) %>
+
+<main class="container">
+    <div class="card" style="text-align: center;">
+        <h2>Scan this QR Code for Attendance</h2>
+        <p><strong>Class:</strong> <%= selectedClass.name %> | <strong>Date:</strong> <%= new Date(date).toLocaleDateString() %></p>
+        <p><strong>Subject:</strong> <%= subject %> | <strong>Session:</strong> <%= session %></p>
+
+        <img src="<%= qrCodeUrl %>" alt="Session QR Code" style="max-width: 300px; margin: 2rem auto; display: block;">
+
+        <h3 id="scan-count">Scanned: 0 Students</h3>
+        <ul id="scanned-list" style="list-style: none; padding: 0; max-height: 200px; overflow-y: auto;">
+            </ul>
+
+        <form action="/teacher/attendance/submit-session" method="POST" style="margin-top: 2rem;">
+            <input type="hidden" name="classId" value="<%= classId %>">
+            <input type="hidden" name="date" value="<%= date %>">
+            <input type="hidden" name="subject" value="<%= subject %>">
+            <input type="hidden" name="session" value="<%= session %>">
+            
+            <div id="present-students-container"></div>
+            
+            <button type="submit" class="btn btn-danger">End Session & Submit Attendance</button>
+        </form>
+    </div>
+</main>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- 1. Connect to Socket.IO Server ---
+        const socket = io();
+
+        // --- 2. Get References to Page Elements ---
+        const scanCountElement = document.getElementById('scan-count');
+        const scannedListElement = document.getElementById('scanned-list');
+        const formContainer = document.getElementById('present-students-container');
+        
+        // This set will store student IDs to prevent duplicates
+        const scannedStudentIds = new Set();
+        
+        // --- 3. Listen for Scans from the Server ---
+        socket.on('newStudentScanned', (data) => {
+            // data contains { sessionIdentifier: '...', studentName: '...', studentId: '...' }
+
+            // Check if this student has NOT been scanned yet
+            if (!scannedStudentIds.has(data.studentId)) {
+                scannedStudentIds.add(data.studentId);
+                
+                // 1. Update the counter
+                scanCountElement.textContent = `Scanned: ${scannedStudentIds.size} Students`;
+                
+                // 2. Add student name to the visual list
+                const listItem = document.createElement('li');
+                listItem.textContent = data.studentName;
+                scannedListElement.appendChild(listItem);
+                
+                // 3. Add a hidden input to the form for final submission
+                const hiddenInput = document.createElement('input');
+                hiddenInput.type = 'hidden';
+                hiddenInput.name = 'presentStudents'; // This will be an array
+                hiddenInput.value = data.studentId;
+                formContainer.appendChild(hiddenInput);
+            }
+        });
+    });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,96 @@
+<%- include('partials/_header') %>
+<%- include('partials/_nav', { user: user }) %>
+<style>
+    #video-container {
+        position: relative; width: 100%; max-width: 500px;
+        margin: 20px auto; border: 2px solid #eee; background-color: #000;
+    }
+    #video { width: 100%; height: auto; display: block; }
+    #status-message { text-align: center; }
+    .scan-success { color: var(--success-color); font-weight: bold; }
+    .scan-fail { color: var(--danger-color); font-weight: bold; }
+</style>
+
+<main class="container">
+    <div class="card">
+        <h2>Scan Session QR Code</h2>
+        <p>Point your camera at the QR code displayed by your teacher.</p>
+
+        <div id="video-container">
+            <video id="video" playsinline></video>
+        </div>
+        <p id="status-message">Starting camera...</p>
+    </div>
+</main>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- 1. Connect to Socket.IO Server ---
+        const socket = io();
+
+        // --- 2. Get User Info from EJS ---
+        const studentId = "<%= user._id %>";
+        const studentName = "<%= user.name %>";
+
+        // --- 3. Setup Camera & jsQR ---
+        const video = document.getElementById('video');
+        const canvasElement = document.createElement('canvas');
+        const canvas = canvasElement.getContext('2d', { willReadFrequently: true });
+        const statusMessage = document.getElementById('status-message');
+        let scanActive = true;
+
+        function tick() {
+            if (!scanActive) return;
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                canvasElement.height = video.videoHeight;
+                canvasElement.width = video.videoWidth;
+                canvas.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
+                const imageData = canvas.getImageData(0, 0, canvasElement.width, canvasElement.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+                if (code) {
+                    // --- 4. Scan Success! ---
+                    scanActive = false; // Stop scanning
+                    const sessionIdentifier = code.data;
+                    
+                    // Display success message
+                    statusMessage.textContent = "Scan Successful! Marking you present...";
+                    statusMessage.className = "scan-success";
+
+                    // --- 5. Emit the scan event to the server ---
+                    socket.emit('studentScan', {
+                        sessionIdentifier: sessionIdentifier,
+                        studentId: studentId,
+                        studentName: studentName
+                    });
+
+                    // Optional: Redirect after a short delay
+                    setTimeout(() => {
+                        window.location.href = '/student/dashboard';
+                    }, 2000);
+                }
+            }
+            if (scanActive) {
+                requestAnimationFrame(tick);
+            }
+        }
+
+        // --- 6. Start the Camera ---
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+            .then(function(stream) {
+                video.srcObject = stream;
+                video.play();
+                statusMessage.textContent = 'Point camera at a QR code';
+                requestAnimationFrame(tick);
+            })
+            .catch(function(err) {
+                console.error("Camera Error:", err);
+                statusMessage.textContent = "Error: Could not access camera.";
+            });
+    });
+</script>
+</body>
+</html>

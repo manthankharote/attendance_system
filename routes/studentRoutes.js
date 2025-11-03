@@ -7,7 +7,8 @@ const {
     getQrCode,
     getProfilePage,
     updateProfile,
-    updatePassword
+    updatePassword,
+    getScanPage
 } = require('../controllers/studentController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
@@ -17,6 +18,7 @@ router.use(authorize('student'));
 // --- Main Routes ---
 router.get('/dashboard', getStudentDashboard);
 router.get('/qrcode', getQrCode);
+router.get('/scan',getScanPage);
 
 // --- Profile Management Routes ---
 router.get('/profile', getProfilePage);
