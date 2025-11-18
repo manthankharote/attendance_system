@@ -4,22 +4,50 @@
     #video-container {
         position: relative; width: 100%; max-width: 500px;
         margin: 20px auto; border: 2px solid #eee; background-color: #000;
+        min-height: 300px; display: flex; align-items: center; justify-content: center;
     }
     #video { width: 100%; height: auto; display: block; }
-    #status-message { text-align: center; }
-    .scan-success { color: var(--success-color); font-weight: bold; }
-    .scan-fail { color: var(--danger-color); font-weight: bold; }
+    
+    /* Success Message Styles */
+    #success-message {
+        display: none; /* Hidden by default */
+        text-align: center;
+        padding: 20px;
+    }
+    .checkmark {
+        font-size: 80px;
+        color: #28a745;
+        display: block;
+        margin-bottom: 10px;
+    }
+    .success-text {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #28a745;
+    }
+    .redirect-text {
+        margin-top: 10px;
+        color: #666;
+        font-size: 0.9rem;
+    }
 </style>
 
 <main class="container">
     <div class="card">
         <h2>Scan Session QR Code</h2>
-        <p>Point your camera at the QR code displayed by your teacher.</p>
+        <p id="instruction-text">Point your camera at the QR code displayed by your teacher.</p>
 
         <div id="video-container">
             <video id="video" playsinline></video>
+            
+            <div id="success-message">
+                <span class="checkmark">✅</span>
+                <div class="success-text">Attendance Marked!</div>
+                <div class="redirect-text">Redirecting to dashboard...</div>
+            </div>
         </div>
-        <p id="status-message">Starting camera...</p>
+        
+        <p id="status-message" style="text-align: center;">Starting camera...</p>
     </div>
 </main>
 
@@ -28,22 +56,22 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        // --- 1. Connect to Socket.IO Server ---
         const socket = io();
-
-        // --- 2. Get User Info from EJS ---
         const studentId = "<%= user._id %>";
         const studentName = "<%= user.name %>";
 
-        // --- 3. Setup Camera & jsQR ---
         const video = document.getElementById('video');
         const canvasElement = document.createElement('canvas');
         const canvas = canvasElement.getContext('2d', { willReadFrequently: true });
         const statusMessage = document.getElementById('status-message');
+        const successMessage = document.getElementById('success-message');
+        const instructionText = document.getElementById('instruction-text');
+        
         let scanActive = true;
 
         function tick() {
             if (!scanActive) return;
+            
             if (video.readyState === video.HAVE_ENOUGH_DATA) {
                 canvasElement.height = video.videoHeight;
                 canvasElement.width = video.videoWidth;
@@ -52,38 +80,43 @@
                 const code = jsQR(imageData.data, imageData.width, imageData.height);
 
                 if (code) {
-                    // --- 4. Scan Success! ---
-                    scanActive = false; // Stop scanning
+                    // --- SCAN SUCCESSFUL LOGIC ---
+                    scanActive = false; 
                     const sessionIdentifier = code.data;
-                    
-                    // Display success message
-                    statusMessage.textContent = "Scan Successful! Marking you present...";
-                    statusMessage.className = "scan-success";
 
-                    // --- 5. Emit the scan event to the server ---
+                    // 1. Hide Video and Status Text
+                    video.style.display = 'none';
+                    statusMessage.style.display = 'none';
+                    instructionText.style.display = 'none';
+
+                    // 2. Show Success Message
+                    successMessage.style.display = 'block';
+
+                    // 3. Emit Event to Server
                     socket.emit('studentScan', {
                         sessionIdentifier: sessionIdentifier,
                         studentId: studentId,
                         studentName: studentName
                     });
 
-                    // Optional: Redirect after a short delay
+                    // 4. Redirect after 3 seconds
                     setTimeout(() => {
                         window.location.href = '/student/dashboard';
-                    }, 2000);
+                    }, 3000);
                 }
             }
+            
             if (scanActive) {
                 requestAnimationFrame(tick);
             }
         }
 
-        // --- 6. Start the Camera ---
         navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
             .then(function(stream) {
                 video.srcObject = stream;
+                video.setAttribute("playsinline", true);
                 video.play();
-                statusMessage.textContent = 'Point camera at a QR code';
+                statusMessage.textContent = 'Looking for QR code...';
                 requestAnimationFrame(tick);
             })
             .catch(function(err) {
