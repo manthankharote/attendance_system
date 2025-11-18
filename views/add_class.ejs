@@ -1,41 +1,51 @@
 <%- include('partials/_header') %>
 <%- include('partials/_nav', { user: user }) %>
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
 <style>
-    .form-container { background: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); max-width: 800px; margin: auto; }
+    .form-container { background: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); max-width: 800px; margin: 2rem auto; }
     .form-group { margin-bottom: 1rem; }
-    select[multiple] { height: 200px; }
+    label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
+    .form-control { width: 100%; padding: 0.75rem; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    /* Fix Select2 width */
+    .select2-container { width: 100% !important; }
 </style>
 
 <main class="container">
     <div class="form-container">
         <h1>Add New Class</h1>
+        
         <form action="/admin/classes/add" method="POST">
             <div class="form-group">
-                <label for="name">Class Name (e.g., Grade 10 - Section A)</label>
+                <label for="name">Class Name (e.g., Grade 10 - A)</label>
                 <input type="text" id="name" name="name" class="form-control" required>
             </div>
+
             <div class="form-group">
                 <label for="teacher">Assign Teacher</label>
                 <select id="teacher" name="teacher" class="form-control" required>
+                    <option value="">-- Select Teacher --</option>
                     <% teachers.forEach(t => { %>
                         <option value="<%= t._id %>"><%= t.name %> (<%= t.schoolId %>)</option>
                     <% }); %>
                 </select>
             </div>
+
             <div class="form-group">
-                <label for="subjects">Subjects (comma-separated)</label>
-                <input type="text" id="subjects" name="subjects" class="form-control" placeholder="e.g. Math, Science, History" required>
+                <label for="subjects">Subjects (Comma Separated)</label>
+                <input type="text" id="subjects" name="subjects" class="form-control" placeholder="Math, Science, History" required>
             </div>
+
             <div class="form-group">
                 <label for="students">Assign Students</label>
-                <select id="students" name="students" class="form-control" multiple required>
+                <select id="students" name="students" class="form-control" multiple>
                     <% students.forEach(s => { %>
                         <option value="<%= s._id %>"><%= s.name %> (<%= s.schoolId %>)</option>
                     <% }); %>
                 </select>
             </div>
-            <button type="submit" class="btn btn-success">Create Class</button>
+
+            <button type="submit" class="btn btn-primary">Create Class</button>
         </form>
     </div>
 </main>
@@ -44,12 +54,17 @@
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
     $(document).ready(function() {
+        // Initialize Select2 for the multi-select student list
         $('#students').select2({
-            placeholder: "Select students",
+            placeholder: "Search and select students",
             allowClear: true
         });
-        $('#teacher').select2();
+        // Initialize for teacher as well for search
+        $('#teacher').select2({
+            placeholder: "Select a teacher"
+        });
     });
 </script>
+
 </body>
 </html>

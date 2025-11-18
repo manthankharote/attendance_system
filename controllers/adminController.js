@@ -217,15 +217,33 @@ exports.getAddClassPage = async (req, res) => {
 };
 
 // @desc    Process the add class form
+// @desc    Process the add class form
 exports.addClass = async (req, res) => {
     try {
         const { name, teacher, students, subjects } = req.body;
-        const subjectsArray = subjects.split(',').map(s => s.trim());
-        await Class.create({ name, teacher, students, subjects: subjectsArray });
+
+        // 1. Handle Subjects (Prevent crash if empty)
+        let subjectsArray = [];
+        if (subjects) {
+            subjectsArray = subjects.split(',').map(s => s.trim());
+        }
+
+        // 2. Handle Students (Prevent crash if none selected)
+        // If 'students' is undefined, default to an empty array
+        const assignedStudents = students || [];
+
+        await Class.create({
+            name,
+            teacher,
+            students: assignedStudents,
+            subjects: subjectsArray
+        });
+
         res.redirect('/admin/classes');
     } catch (err) {
         console.error(err);
-        res.status(400).send('Could not add class. Class name may already exist.');
+        // Send a clear error message
+        res.status(400).send('Could not add class. Please ensure the Class Name is unique and all fields are filled correctly.');
     }
 };
 
