@@ -1,26 +1,24 @@
+// index.js
+
 const express = require('express');
 const dotenv = require('dotenv');
-const connectDB = require('./config/database');
+const connectDB = require('./config/database'); // 1. Import connectDB
 const path = require('path');
 const cookieParser = require('cookie-parser');
 const { loadSettings } = require('./middleware/settingsMiddleware');
 
-// --- New Imports for Socket.IO ---
-const http = require('http'); // 1. Import http
-const { Server } = require("socket.io"); // 2. Import Server from socket.io
+const http = require('http');
+const { Server } = require("socket.io");
 
-// Load environment variables
+// Load environment variables (This MUST be first)
 dotenv.config();
 
-// Connect to the database
-connectDB();
+// 2. DO NOT call connectDB() here.
 
 // Initialize express app
 const app = express();
-// --- 3. Create an HTTP server from the Express app ---
-const server = http.createServer(app); 
-// --- 4. Initialize Socket.IO with the server ---
-const io = new Server(server); 
+const server = http.createServer(app);
+const io = new Server(server);
 
 // Set the view engine to EJS
 app.set('view engine', 'ejs');
@@ -39,7 +37,6 @@ const adminRoutes = require('./routes/adminRoutes');
 const teacherRoutes = require('./routes/teacherRoutes');
 const studentRoutes = require('./routes/studentRoutes');
 
-// Use routes
 app.use('/auth', authRoutes);
 app.use('/admin', adminRoutes);
 app.use('/teacher', teacherRoutes);
@@ -50,27 +47,36 @@ app.get('/', (req, res) => {
   res.render('welcome', { title: 'Attendance System' });
 });
 
-// --- 5. Socket.IO Connection Logic ---
+// --- Socket.IO Connection Logic ---
 io.on('connection', (socket) => {
     console.log('A user connected');
-
-    // When a student scans, they will send this event
     socket.on('studentScan', (data) => {
-        // data contains { sessionIdentifier: '...', studentName: '...', studentId: '...' }
         console.log('Scan received:', data.studentName);
-        
-        // Broadcast the scan event to the teacher's screen
-        // The teacher's page will be listening for 'newStudentScanned'
         io.emit('newStudentScanned', data);
     });
-
     socket.on('disconnect', () => {
         console.log('User disconnected');
     });
 });
 
-// --- 6. Start the server using server.listen instead of app.listen ---
+// --- 3. NEW: Start Server Function ---
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT} 🚀`);
-});
+
+const startServer = async () => {
+    try {
+        // 4. First, try to connect to the database
+        await connectDB();
+        
+        // 5. If connection is successful, THEN start the server
+        server.listen(PORT, () => {
+            console.log(`Server is running on http://localhost:${PORT} 🚀`);
+        });
+    } catch (error) {
+        console.error("Failed to connect to the database, server did not start.");
+        console.error(error);
+        process.exit(1);
+    }
+};
+
+// --- 6. Call the function to start everything ---
+startServer();
