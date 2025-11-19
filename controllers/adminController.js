@@ -385,7 +385,7 @@ exports.exportReport = async (req, res) => {
             studentId: record.studentDetails.schoolId,
             className: record.classDetails.name,
             subject: record.subject,
-            status: record.records.status
+            status: record.records.status === 'Present' ? 1 : 0
         }));
         const json2csvParser = new Parser({ fields });
         const csv = json2csvParser.parse(formattedData);

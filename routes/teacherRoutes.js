@@ -12,7 +12,8 @@ const {
     getEditAttendancePage,
     updateAttendance,
     generateSessionQr,
-    submitSessionAttendance
+    submitSessionAttendance,
+    exportTeacherReport
 } = require('../controllers/teacherController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
@@ -32,6 +33,7 @@ router.post('/attendance/generate-qr', generateSessionQr);
 
 // Reports Routes
 router.get('/reports', getTeacherReportsPage);
+router.get('/reports/export', exportTeacherReport);
 router.get('/low-attendance', getLowAttendancePage);
 
 // Edit Attendance Routes

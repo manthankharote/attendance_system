@@ -38,6 +38,14 @@
                 <button type="submit" class="btn btn-primary">Apply Filters</button>
                 <a href="/teacher/reports" class="btn btn-secondary">Clear Filters</a>
             </div>
+            <div class="button-group">
+                <button type="submit" class="btn btn-primary">Apply Filters</button>
+                <a href="/teacher/reports" class="btn btn-secondary">Clear Filters</a>
+                
+                <a href="/teacher/reports/export?classId=<%= filters.classId || '' %>&studentId=<%= filters.studentId || '' %>&startDate=<%= filters.startDate || '' %>&endDate=<%= filters.endDate || '' %>" class="btn btn-success">
+                    Export to Excel
+                </a>
+            </div>
         </form>
     </div>
 
