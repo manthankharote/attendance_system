@@ -27,45 +27,60 @@
 </main>
 
 <script src="/socket.io/socket.io.js"></script>
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        // --- 1. Connect to Socket.IO Server ---
+<script>document.addEventListener('DOMContentLoaded', () => {
         const socket = io();
-
-        // --- 2. Get References to Page Elements ---
         const scanCountElement = document.getElementById('scan-count');
         const scannedListElement = document.getElementById('scanned-list');
         const formContainer = document.getElementById('present-students-container');
         
-        // This set will store student IDs to prevent duplicates
         const scannedStudentIds = new Set();
         
-        // --- 3. Listen for Scans from the Server ---
         socket.on('newStudentScanned', (data) => {
-            // data contains { sessionIdentifier: '...', studentName: '...', studentId: '...' }
+            // data contains: sessionIdentifier, studentName, studentId, studentSchoolId
 
-            // Check if this student has NOT been scanned yet
             if (!scannedStudentIds.has(data.studentId)) {
                 scannedStudentIds.add(data.studentId);
                 
-                // 1. Update the counter
+                // 1. Update Count
                 scanCountElement.textContent = `Scanned: ${scannedStudentIds.size} Students`;
                 
-                // 2. Add student name to the visual list
+                // 2. Create the new List Item
                 const listItem = document.createElement('li');
-                listItem.textContent = data.studentName;
-                scannedListElement.appendChild(listItem);
+                // Add a data attribute for sorting
+                listItem.setAttribute('data-roll', data.studentSchoolId); 
+                listItem.textContent = `${data.studentName} (${data.studentSchoolId})`;
                 
-                // 3. Add a hidden input to the form for final submission
+                // --- 👇 SORTING LOGIC STARTS HERE 👇 ---
+                const currentItems = scannedListElement.children;
+                let inserted = false;
+
+                // Loop through existing items to find where to insert the new one
+                for (let i = 0; i < currentItems.length; i++) {
+                    const currentRoll = currentItems[i].getAttribute('data-roll');
+                    
+                    // Compare Roll Numbers (Handles numbers "1, 2, 10" correctly)
+                    if (data.studentSchoolId.localeCompare(currentRoll, undefined, {numeric: true}) < 0) {
+                        scannedListElement.insertBefore(listItem, currentItems[i]);
+                        inserted = true;
+                        break;
+                    }
+                }
+
+                // If it wasn't inserted (meaning it's the largest number), add to the end
+                if (!inserted) {
+                    scannedListElement.appendChild(listItem);
+                }
+                // --- 👆 SORTING LOGIC ENDS HERE 👆 ---
+                
+                // 3. Add hidden input for form submission
                 const hiddenInput = document.createElement('input');
                 hiddenInput.type = 'hidden';
-                hiddenInput.name = 'presentStudents'; // This will be an array
+                hiddenInput.name = 'presentStudents';
                 hiddenInput.value = data.studentId;
                 formContainer.appendChild(hiddenInput);
             }
         });
-    });
-</script>
+    });</script>
 
 </body>
 </html>

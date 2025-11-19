@@ -55,10 +55,12 @@
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 
 <script>
-    document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => {
         const socket = io();
+        // 👇 We now grab the School ID (Roll No) as well
         const studentId = "<%= user._id %>";
         const studentName = "<%= user.name %>";
+        const studentSchoolId = "<%= user.schoolId %>"; 
 
         const video = document.getElementById('video');
         const canvasElement = document.createElement('canvas');
@@ -80,32 +82,27 @@
                 const code = jsQR(imageData.data, imageData.width, imageData.height);
 
                 if (code) {
-                    // --- SCAN SUCCESSFUL LOGIC ---
                     scanActive = false; 
                     const sessionIdentifier = code.data;
 
-                    // 1. Hide Video and Status Text
                     video.style.display = 'none';
                     statusMessage.style.display = 'none';
                     instructionText.style.display = 'none';
-
-                    // 2. Show Success Message
                     successMessage.style.display = 'block';
 
-                    // 3. Emit Event to Server
+                    // 👇 Send the schoolId to the server
                     socket.emit('studentScan', {
                         sessionIdentifier: sessionIdentifier,
                         studentId: studentId,
-                        studentName: studentName
+                        studentName: studentName,
+                        studentSchoolId: studentSchoolId
                     });
 
-                    // 4. Redirect after 3 seconds
                     setTimeout(() => {
                         window.location.href = '/student/dashboard';
                     }, 3000);
                 }
             }
-            
             if (scanActive) {
                 requestAnimationFrame(tick);
             }
@@ -123,7 +120,6 @@
                 console.error("Camera Error:", err);
                 statusMessage.textContent = "Error: Could not access camera.";
             });
-    });
-</script>
+    });</script>
 </body>
 </html>
