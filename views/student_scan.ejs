@@ -3,33 +3,28 @@
 <style>
     #video-container {
         position: relative; width: 100%; max-width: 500px;
-        margin: 20px auto; border: 2px solid #eee; background-color: #000;
+        margin: 20px auto 10px auto; border: 2px solid #eee; background-color: #000;
         min-height: 300px; display: flex; align-items: center; justify-content: center;
     }
     #video { width: 100%; height: auto; display: block; }
     
-    /* Success Message Styles */
     #success-message {
-        display: none; /* Hidden by default */
+        display: none;
         text-align: center;
         padding: 20px;
     }
-    .checkmark {
-        font-size: 80px;
-        color: #28a745;
-        display: block;
-        margin-bottom: 10px;
+    .checkmark { font-size: 80px; color: #28a745; display: block; margin-bottom: 10px; }
+    .success-text { font-size: 1.5rem; font-weight: bold; color: #28a745; }
+    .redirect-text { margin-top: 10px; color: #666; font-size: 0.9rem; }
+
+    /* 👇 Styles for the Zoom Slider */
+    #zoom-container {
+        width: 100%; max-width: 500px; margin: 0 auto 20px auto;
+        display: none; /* Hidden by default until we detect zoom support */
+        align-items: center; gap: 10px;
     }
-    .success-text {
-        font-size: 1.5rem;
-        font-weight: bold;
-        color: #28a745;
-    }
-    .redirect-text {
-        margin-top: 10px;
-        color: #666;
-        font-size: 0.9rem;
-    }
+    #zoom-slider { flex-grow: 1; cursor: pointer; }
+    .zoom-label { font-weight: bold; color: #555; }
 </style>
 
 <main class="container">
@@ -39,12 +34,17 @@
 
         <div id="video-container">
             <video id="video" playsinline></video>
-            
             <div id="success-message">
                 <span class="checkmark">✅</span>
                 <div class="success-text">Attendance Marked!</div>
                 <div class="redirect-text">Redirecting to dashboard...</div>
             </div>
+        </div>
+
+        <div id="zoom-container">
+            <span class="zoom-label">−</span>
+            <input type="range" id="zoom-slider" min="1" max="5" step="0.1" value="1">
+            <span class="zoom-label">+</span>
         </div>
         
         <p id="status-message" style="text-align: center;">Starting camera...</p>
@@ -55,12 +55,11 @@
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', () => {
         const socket = io();
-        // 👇 We now grab the School ID (Roll No) as well
         const studentId = "<%= user._id %>";
         const studentName = "<%= user.name %>";
-        const studentSchoolId = "<%= user.schoolId %>"; 
+        const studentSchoolId = "<%= user.schoolId %>";
 
         const video = document.getElementById('video');
         const canvasElement = document.createElement('canvas');
@@ -68,6 +67,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const statusMessage = document.getElementById('status-message');
         const successMessage = document.getElementById('success-message');
         const instructionText = document.getElementById('instruction-text');
+        
+        // Zoom Elements
+        const zoomContainer = document.getElementById('zoom-container');
+        const zoomSlider = document.getElementById('zoom-slider');
         
         let scanActive = true;
 
@@ -86,11 +89,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     const sessionIdentifier = code.data;
 
                     video.style.display = 'none';
+                    zoomContainer.style.display = 'none'; // Hide zoom on success
                     statusMessage.style.display = 'none';
                     instructionText.style.display = 'none';
                     successMessage.style.display = 'block';
 
-                    // 👇 Send the schoolId to the server
                     socket.emit('studentScan', {
                         sessionIdentifier: sessionIdentifier,
                         studentId: studentId,
@@ -114,12 +117,36 @@ document.addEventListener('DOMContentLoaded', () => {
                 video.setAttribute("playsinline", true);
                 video.play();
                 statusMessage.textContent = 'Looking for QR code...';
+                
+                // 👇 ZOOM LOGIC STARTS HERE 👇
+                const track = stream.getVideoTracks()[0];
+                const capabilities = track.getCapabilities();
+
+                // Check if the camera supports Zoom
+                if (capabilities.zoom) {
+                    zoomContainer.style.display = 'flex'; // Show the slider
+                    zoomSlider.min = capabilities.zoom.min;
+                    zoomSlider.max = capabilities.zoom.max;
+                    zoomSlider.step = capabilities.zoom.step;
+                    zoomSlider.value = 1; // Start at 1x zoom
+
+                    zoomSlider.oninput = function() {
+                        track.applyConstraints({
+                            advanced: [{ zoom: parseFloat(this.value) }]
+                        });
+                    }
+                } else {
+                    console.log('Zoom not supported on this device');
+                }
+                // 👆 ZOOM LOGIC ENDS HERE 👆
+
                 requestAnimationFrame(tick);
             })
             .catch(function(err) {
                 console.error("Camera Error:", err);
                 statusMessage.textContent = "Error: Could not access camera.";
             });
-    });</script>
+    });
+</script>
 </body>
 </html>
