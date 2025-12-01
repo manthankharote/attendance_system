@@ -6,8 +6,80 @@ const Setting = require('../models/Setting');
 const Session = require('../models/Session');
 const qrcode = require('qrcode');
 const crypto = require('crypto');
-
+const { Parser } = require('json2csv');
 // @desc    Show the teacher dashboard
+exports.exportTeacherReport = async (req, res) => {
+    try {
+        const { classId, studentId, startDate, endDate } = req.query;
+
+        // --- Security: Get classes taught by this teacher ---
+        const teacherClasses = await Class.find({ teacher: req.user._id }).select('_id');
+        const teacherClassIds = teacherClasses.map(c => c._id);
+
+        if (teacherClassIds.length === 0) {
+            return res.status(400).send('No classes assigned.');
+        }
+
+        // --- Build the Secure Pipeline (Same as getTeacherReportsPage) ---
+        const match = { class: { $in: teacherClassIds } };
+        if (classId) match.class = new mongoose.Types.ObjectId(classId);
+        if (startDate && endDate) match.date = { $gte: new Date(startDate), $lte: new Date(endDate) };
+
+        const pipeline = [
+            { $match: match },
+            { $unwind: '$records' }
+        ];
+
+        if (studentId) {
+            pipeline.push({ $match: { 'records.student': new mongoose.Types.ObjectId(studentId) } });
+        }
+        
+        pipeline.push(
+            { $lookup: { from: 'users', localField: 'records.student', foreignField: '_id', as: 'studentDetails' } },
+            { $lookup: { from: 'classes', localField: 'class', foreignField: '_id', as: 'classDetails' } },
+            { $unwind: '$studentDetails' },
+            { $unwind: '$classDetails' },
+            { $sort: { date: -1, 'studentDetails.name': 1 } }
+        );
+
+        const records = await Attendance.aggregate(pipeline);
+
+        // --- Generate CSV with 1/0 Logic ---
+        const fields = [
+            { label: 'Date', value: 'date' },
+            { label: 'Time', value: 'time' },
+            { label: 'Student Name', value: 'studentName' },
+            { label: 'Roll No', value: 'rollNo' },
+            { label: 'Class', value: 'className' },
+            { label: 'Subject', value: 'subject' },
+            { label: 'Session', value: 'session' },
+            { label: 'Status (1=P, 0=A)', value: 'status' } // Clear Label
+        ];
+
+        const formattedData = records.map(record => ({
+            date: new Date(record.date).toLocaleDateString(),
+            time: new Date(record.updatedAt).toLocaleTimeString(),
+            studentName: record.studentDetails.name,
+            rollNo: record.studentDetails.schoolId,
+            className: record.classDetails.name,
+            subject: record.subject,
+            session: record.session || 'N/A',
+            // 👇 Logic for 1 and 0
+            status: record.records.status === 'Present' ? 1 : 0
+        }));
+        
+        const json2csvParser = new Parser({ fields });
+        const csv = json2csvParser.parse(formattedData);
+
+        res.header('Content-Type', 'text/csv');
+        res.attachment(`teacher_report_${new Date().toISOString().slice(0,10)}.csv`);
+        res.send(csv);
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Server Error');
+    }
+};
 exports.getTeacherDashboard = async (req, res) => {
     try {
         const classes = await Class.find({ teacher: req.user._id }).populate('students').sort({ name: 1 });

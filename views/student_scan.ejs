@@ -3,23 +3,51 @@
 <style>
     #video-container {
         position: relative; width: 100%; max-width: 500px;
-        margin: 20px auto; border: 2px solid #eee; background-color: #000;
+        margin: 20px auto 10px auto; border: 2px solid #eee; background-color: #000;
+        min-height: 300px; display: flex; align-items: center; justify-content: center;
     }
     #video { width: 100%; height: auto; display: block; }
-    #status-message { text-align: center; }
-    .scan-success { color: var(--success-color); font-weight: bold; }
-    .scan-fail { color: var(--danger-color); font-weight: bold; }
+    
+    #success-message {
+        display: none;
+        text-align: center;
+        padding: 20px;
+    }
+    .checkmark { font-size: 80px; color: #28a745; display: block; margin-bottom: 10px; }
+    .success-text { font-size: 1.5rem; font-weight: bold; color: #28a745; }
+    .redirect-text { margin-top: 10px; color: #666; font-size: 0.9rem; }
+
+    /* 👇 Styles for the Zoom Slider */
+    #zoom-container {
+        width: 100%; max-width: 500px; margin: 0 auto 20px auto;
+        display: none; /* Hidden by default until we detect zoom support */
+        align-items: center; gap: 10px;
+    }
+    #zoom-slider { flex-grow: 1; cursor: pointer; }
+    .zoom-label { font-weight: bold; color: #555; }
 </style>
 
 <main class="container">
     <div class="card">
         <h2>Scan Session QR Code</h2>
-        <p>Point your camera at the QR code displayed by your teacher.</p>
+        <p id="instruction-text">Point your camera at the QR code displayed by your teacher.</p>
 
         <div id="video-container">
             <video id="video" playsinline></video>
+            <div id="success-message">
+                <span class="checkmark">✅</span>
+                <div class="success-text">Attendance Marked!</div>
+                <div class="redirect-text">Redirecting to dashboard...</div>
+            </div>
         </div>
-        <p id="status-message">Starting camera...</p>
+
+        <div id="zoom-container">
+            <span class="zoom-label">−</span>
+            <input type="range" id="zoom-slider" min="1" max="5" step="0.1" value="1">
+            <span class="zoom-label">+</span>
+        </div>
+        
+        <p id="status-message" style="text-align: center;">Starting camera...</p>
     </div>
 </main>
 
@@ -28,22 +56,27 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        // --- 1. Connect to Socket.IO Server ---
         const socket = io();
-
-        // --- 2. Get User Info from EJS ---
         const studentId = "<%= user._id %>";
         const studentName = "<%= user.name %>";
+        const studentSchoolId = "<%= user.schoolId %>";
 
-        // --- 3. Setup Camera & jsQR ---
         const video = document.getElementById('video');
         const canvasElement = document.createElement('canvas');
         const canvas = canvasElement.getContext('2d', { willReadFrequently: true });
         const statusMessage = document.getElementById('status-message');
+        const successMessage = document.getElementById('success-message');
+        const instructionText = document.getElementById('instruction-text');
+        
+        // Zoom Elements
+        const zoomContainer = document.getElementById('zoom-container');
+        const zoomSlider = document.getElementById('zoom-slider');
+        
         let scanActive = true;
 
         function tick() {
             if (!scanActive) return;
+            
             if (video.readyState === video.HAVE_ENOUGH_DATA) {
                 canvasElement.height = video.videoHeight;
                 canvasElement.width = video.videoWidth;
@@ -52,25 +85,25 @@
                 const code = jsQR(imageData.data, imageData.width, imageData.height);
 
                 if (code) {
-                    // --- 4. Scan Success! ---
-                    scanActive = false; // Stop scanning
+                    scanActive = false; 
                     const sessionIdentifier = code.data;
-                    
-                    // Display success message
-                    statusMessage.textContent = "Scan Successful! Marking you present...";
-                    statusMessage.className = "scan-success";
 
-                    // --- 5. Emit the scan event to the server ---
+                    video.style.display = 'none';
+                    zoomContainer.style.display = 'none'; // Hide zoom on success
+                    statusMessage.style.display = 'none';
+                    instructionText.style.display = 'none';
+                    successMessage.style.display = 'block';
+
                     socket.emit('studentScan', {
                         sessionIdentifier: sessionIdentifier,
                         studentId: studentId,
-                        studentName: studentName
+                        studentName: studentName,
+                        studentSchoolId: studentSchoolId
                     });
 
-                    // Optional: Redirect after a short delay
                     setTimeout(() => {
                         window.location.href = '/student/dashboard';
-                    }, 2000);
+                    }, 3000);
                 }
             }
             if (scanActive) {
@@ -78,12 +111,35 @@
             }
         }
 
-        // --- 6. Start the Camera ---
         navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
             .then(function(stream) {
                 video.srcObject = stream;
+                video.setAttribute("playsinline", true);
                 video.play();
-                statusMessage.textContent = 'Point camera at a QR code';
+                statusMessage.textContent = 'Looking for QR code...';
+                
+                // 👇 ZOOM LOGIC STARTS HERE 👇
+                const track = stream.getVideoTracks()[0];
+                const capabilities = track.getCapabilities();
+
+                // Check if the camera supports Zoom
+                if (capabilities.zoom) {
+                    zoomContainer.style.display = 'flex'; // Show the slider
+                    zoomSlider.min = capabilities.zoom.min;
+                    zoomSlider.max = capabilities.zoom.max;
+                    zoomSlider.step = capabilities.zoom.step;
+                    zoomSlider.value = 1; // Start at 1x zoom
+
+                    zoomSlider.oninput = function() {
+                        track.applyConstraints({
+                            advanced: [{ zoom: parseFloat(this.value) }]
+                        });
+                    }
+                } else {
+                    console.log('Zoom not supported on this device');
+                }
+                // 👆 ZOOM LOGIC ENDS HERE 👆
+
                 requestAnimationFrame(tick);
             })
             .catch(function(err) {

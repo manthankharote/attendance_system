@@ -22,6 +22,9 @@ router.get('/users/edit/:id', getEditUserPage);
 router.post('/users/edit/:id', updateUser);
 router.post('/users/delete/:id', deleteUser);
 router.get('/classes', getClasses);
+
+router.get('/classes/add', getAddClassPage);
+
 router.post('/classes/add', addClass);
 router.get('/classes/edit/:id', getEditClassPage);
 router.post('/classes/edit/:id', updateClass);
