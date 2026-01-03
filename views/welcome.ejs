@@ -8,12 +8,20 @@
         body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f0f2f5; }
         .container { text-align: center; padding: 40px; background-color: white; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
         h1 { color: #333; }
+        btn {
+            border-radius: 10%;
+        }
+
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Welcome to the Student Attendance System!</h1>
         <p>Project setup is successful. Ready for the next step.</p>
+        <form action="/auth/login">
+            <button class="btn">Click Here To Login</button>
+        </form>
     </div>
+
 </body>
 </html>
